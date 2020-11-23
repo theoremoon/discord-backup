@@ -8,6 +8,7 @@ import git
 client = discord.Client()
 
 repository = sys.argv[1]
+token = sys.argv[2]
 
 async def save_channel_messages(repo,prefix, ch):
     dir = os.path.join(repo, prefix, ch.name)
@@ -73,6 +74,6 @@ async def on_message(message):
 
 
 
-client.run("NzgwMzQzMzQ1NjI4NzA4ODk1.X7ttXw.Csiba_1l-OCIlY0IiwZ5yGye_jE")
+client.run(token)
 
 
