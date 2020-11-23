@@ -48,14 +48,9 @@ async def on_message(message):
         await message.channel.send("pong")
         return
 
-    r = re.findall(r"^(!backup)\s+(.+)", message.content)
-    if r:
-        if len(r[0]) == 1:
-            await message.channel.send("Usage: !backup <category>")
-            return
-
-        category = r[0][1]
-        categories = {c.name:c for c in message.guild.categories}
+    if message.content.startswith("!backup "):
+        category = message.content[len("!backup "):].lower()
+        categories = {c.name.lower():c for c in message.guild.categories}
         if category not in categories:
             await message.channel.send("no such category: {}".format(category))
             return
@@ -71,6 +66,28 @@ async def on_message(message):
         repo.git.push("origin","master")
 
         await message.channel.send("[+] backup category: {}".format(category.name))
+
+    if message.content.startswith("!remove "):
+        category = message.content[len("!remove "):].lower()
+        categories = {c.name.lower():c for c in message.guild.categories}
+        if category not in categories:
+            await message.channel.send("no such category: {}".format(category))
+            return
+
+        category = categories[category]
+        for ch in category.text_channels:
+            try:
+                await ch.delete()
+                await message.channel.send("[+] remove channel: {}".format(ch.name))
+            except Exception:
+                await message.channel.send("[-] failed to remove channel: {}".format(ch.name))
+
+        try:
+            await category.delete()
+            await message.channel.send("[+] remove category: {}".format(category.name))
+        except Exception:
+            await message.channel.send("[-] failed to remove category: {}".format(category.name))
+
 
 
 
