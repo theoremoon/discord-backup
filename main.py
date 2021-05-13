@@ -38,6 +38,32 @@ async def save_channel_messages(repo,prefix, ch):
     with open(os.path.join(dir, ch.name + ".md"),"w") as f:
         f.write(text)
 
+async def backup_category(message, category, repository):
+    for ch in category.text_channels:
+        await save_channel_messages(repository, category.name, ch)
+        await message.channel.send("[+] backup channel: {}".format(ch.name))
+
+    repo = git.Repo(repository)
+    repo.git.add(".")
+    repo.index.commit("backup category: {}".format(category.name))
+    repo.git.push("origin","master")
+
+    await message.channel.send("[+] backup category: {}".format(category.name))
+
+async def remove_category(message, category):
+    for ch in category.text_channels:
+        try:
+            await ch.delete()
+            await message.channel.send("[+] remove channel: {}".format(ch.name))
+        except Exception:
+            await message.channel.send("[-] failed to remove channel: {}".format(ch.name))
+
+    try:
+        await category.delete()
+        await message.channel.send("[+] remove category: {}".format(category.name))
+    except Exception:
+        await message.channel.send("[-] failed to remove category: {}".format(category.name))
+
 
 @client.event
 async def on_message(message):
@@ -56,16 +82,7 @@ async def on_message(message):
             return
 
         category = categories[category]
-        for ch in category.text_channels:
-            await save_channel_messages(repository, category.name, ch)
-            await message.channel.send("[+] backup channel: {}".format(ch.name))
-
-        repo = git.Repo(repository)
-        repo.git.add(".")
-        repo.index.commit("backup category: {}".format(category.name))
-        repo.git.push("origin","master")
-
-        await message.channel.send("[+] backup category: {}".format(category.name))
+        await backup_category(message, category, repository)
 
     if message.content.startswith("!remove "):
         category = message.content[len("!remove "):].lower()
@@ -75,20 +92,27 @@ async def on_message(message):
             return
 
         category = categories[category]
-        for ch in category.text_channels:
-            try:
-                await ch.delete()
-                await message.channel.send("[+] remove channel: {}".format(ch.name))
-            except Exception:
-                await message.channel.send("[-] failed to remove channel: {}".format(ch.name))
+        await remove_category(message, category)
 
-        try:
-            await category.delete()
-            await message.channel.send("[+] remove category: {}".format(category.name))
-        except Exception:
-            await message.channel.send("[-] failed to remove category: {}".format(category.name))
+    if message.content.startswith("!archive "):
+        category_name = message.content[len("!archive "):].lower()
+        categories = {c.name.lower():c for c in message.guild.categories}
+        if category_name not in categories:
+            await message.channel.send("no such category: {}".format(category_name))
+            return
 
+        category = categories[category_name]
+        await backup_category(message, category, repository)
+        await remove_category(message, category)
 
+        category_name = category_name + "-solved"
+        if category_name not in categories:
+            await message.channel.send("no such category: {}".format(category_name))
+            return
+
+        category = categories[category_name]
+        await backup_category(message, category, repository)
+        await remove_category(message, category)
 
 
 client.run(token)
