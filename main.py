@@ -42,7 +42,7 @@ async def save_channel_messages(repo, prefix, ch):
                 attachment_path = avoid_filename_collision(attachment_dir / a.filename)
                 with open(attachment_path, "wb") as f:
                     f.write(r.content)
-                text += "![](attachments/{})\n".format(attachment_path.name)
+                text += "![attachments/{}](attachments/{})\n".format(attachment_path.name, attachment_path.name)
             except Exception as e:
                 print("[-] failed to save attachment: {}".format(e))
         text += "\n"
