@@ -112,7 +112,7 @@ async def on_message(message):
         category = categories[category]
         messages = await backup_category(category, repository)
         embed = discord.Embed(title=message.content, description="\n".join(messages))
-        await message.channel.send(embed)
+        await message.channel.send(embed=embed)
 
     if message.content.startswith("!remove "):
         category = message.content[len("!remove "):].lower()
@@ -124,7 +124,7 @@ async def on_message(message):
         category = categories[category]
         messages = await remove_category(category)
         embed = discord.Embed(title=message.content, description="\n".join(messages))
-        await message.channel.send(embed)
+        await message.channel.send(embed=embed)
 
     if message.content.startswith("!archive "):
         category_prefix = message.content[len("!archive "):].lower()
@@ -134,18 +134,18 @@ async def on_message(message):
             category_name = category_prefix + postfix
             if category_name not in categories:
                 embed = discord.Embed(title=message.content, description="no such category: {}".format(category_name))
-                await message.channel.send(embed)
+                await message.channel.send(embed=embed)
                 continue
 
             category = categories[category_name]
 
             messages = await backup_category(category, repository)
             embed = discord.Embed(title="backup {}".format(category_name), description="\n".join(messages))
-            await message.channel.send(embed)
+            await message.channel.send(embed=embed)
 
             messages = await remove_category(category)
             embed = discord.Embed(title="remove {}".format(category_name), description="\n".join(messages))
-            await message.channel.send(embed)
+            await message.channel.send(embed=embed)
 
 
 client.run(token)
