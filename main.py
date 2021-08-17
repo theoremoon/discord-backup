@@ -5,6 +5,7 @@ import requests
 import sys
 import git
 from pathlib import Path
+from typing import List
 
 client = discord.Client()
 
@@ -51,35 +52,45 @@ async def save_channel_messages(repo, prefix, ch):
         f.write(text)
 
 
-async def backup_category(message, category, repository):
+async def backup_category(category, repository) -> List[str]:
+    messages = []
+
     for ch in category.text_channels:
-        await save_channel_messages(repository, category.name, ch)
-        await message.channel.send("[+] backup channel: {}".format(ch.name))
+        try:
+            messages += await save_channel_messages(repository, category.name, ch)
+            messages.append("[+] backup channel: {}".format(ch.name))
+        except Exception as e:
+            messages.append("[-] channel backup error: (channel: {}, error: {})".format(ch.name, e))
 
     try:
         repo = git.Repo(repository)
         repo.git.add(".")
         repo.index.commit("backup category: {}".format(category.name))
         repo.git.push("origin", "master")
-        await message.channel.send("[+] backup category: {}".format(category.name))
-
+        messages.append("[+] category backup: {}".format(category.name))
     except Exception as e:
-        await message.channel.send("[-] git error: {}".format(e))
+        messages.append("[-] category backup error: (channel: {}, error: {})".format(category.name, e))
+
+    return messages
 
 
-async def remove_category(message, category):
+async def remove_category(category)->List[str]:
+    messages = []
+
     for ch in category.text_channels:
         try:
             await ch.delete()
-            await message.channel.send("[+] remove channel: {}".format(ch.name))
-        except Exception:
-            await message.channel.send("[-] failed to remove channel: {}".format(ch.name))
+            messages.append("[+] remove channel: {}".format(ch.name))
+        except Exception as e:
+            messages.append("[-] channel remove error: (category: {}, error: {})".format(ch.name, e))
 
     try:
         await category.delete()
-        await message.channel.send("[+] remove category: {}".format(category.name))
-    except Exception:
-        await message.channel.send("[-] failed to remove category: {}".format(category.name))
+        messages.append("[+] remove category: {}".format(category.name))
+    except Exception as e:
+        messages.append("[-] category remove error: (category: {}, error: {})".format(category.name, e))
+
+    return messages
 
 
 @client.event
@@ -99,7 +110,9 @@ async def on_message(message):
             return
 
         category = categories[category]
-        await backup_category(message, category, repository)
+        messages = await backup_category(message, category, repository)
+        embed = discord.Embed(title=message.content, description="\n".join(messages))
+        await message.channel.send(embed)
 
     if message.content.startswith("!remove "):
         category = message.content[len("!remove "):].lower()
@@ -109,27 +122,30 @@ async def on_message(message):
             return
 
         category = categories[category]
-        await remove_category(message, category)
+        messages = await remove_category(message, category)
+        embed = discord.Embed(title=message.content, description="\n".join(messages))
+        await message.channel.send(embed)
 
     if message.content.startswith("!archive "):
-        category_name = message.content[len("!archive "):].lower()
+        category_prefix = message.content[len("!archive "):].lower()
         categories = {c.name.lower(): c for c in message.guild.categories}
-        if category_name not in categories:
-            await message.channel.send("no such category: {}".format(category_name))
-            return
 
-        category = categories[category_name]
-        await backup_category(message, category, repository)
-        await remove_category(message, category)
+        for postfix in ["", "-solved", "-unsolved"]:
+            category_name = category_prefix + postfix
+            if category_name not in categories:
+                embed = discord.Embed(title=message.content, description="no such category: {}".format(category_name))
+                await message.channel.send(embed)
+                continue
 
-        category_name = category_name + "-solved"
-        if category_name not in categories:
-            await message.channel.send("no such category: {}".format(category_name))
-            return
+            category = categories[category_name]
 
-        category = categories[category_name]
-        await backup_category(message, category, repository)
-        await remove_category(message, category)
+            messages = await backup_category(message, category, repository)
+            embed = discord.Embed(title="backup {}".format(category_name), description="\n".join(messages))
+            await message.channel.send(embed)
+
+            messages = await remove_category(message, category, repository)
+            embed = discord.Embed(title="remove {}".format(category_name), description="\n".join(messages))
+            await message.channel.send(embed)
 
 
 client.run(token)
