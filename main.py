@@ -110,7 +110,7 @@ async def on_message(message):
             return
 
         category = categories[category]
-        messages = await backup_category(message, category, repository)
+        messages = await backup_category(category, repository)
         embed = discord.Embed(title=message.content, description="\n".join(messages))
         await message.channel.send(embed)
 
@@ -122,7 +122,7 @@ async def on_message(message):
             return
 
         category = categories[category]
-        messages = await remove_category(message, category)
+        messages = await remove_category(category)
         embed = discord.Embed(title=message.content, description="\n".join(messages))
         await message.channel.send(embed)
 
@@ -139,11 +139,11 @@ async def on_message(message):
 
             category = categories[category_name]
 
-            messages = await backup_category(message, category, repository)
+            messages = await backup_category(category, repository)
             embed = discord.Embed(title="backup {}".format(category_name), description="\n".join(messages))
             await message.channel.send(embed)
 
-            messages = await remove_category(message, category, repository)
+            messages = await remove_category(category)
             embed = discord.Embed(title="remove {}".format(category_name), description="\n".join(messages))
             await message.channel.send(embed)
 
