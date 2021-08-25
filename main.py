@@ -28,6 +28,7 @@ async def save_channel_messages(repo, prefix, ch):
     os.makedirs(attachment_dir, exist_ok=True)
 
     msgs = await ch.history(limit=None).flatten()
+    errors = []
 
     text = ""
     for msg in msgs[::-1]:
@@ -45,19 +46,21 @@ async def save_channel_messages(repo, prefix, ch):
                     f.write(r.content)
                 text += "![attachments/{}](attachments/{})\n".format(attachment_path.name, attachment_path.name)
             except Exception as e:
-                print("[-] failed to save attachment: {}".format(e))
+                errors.append("[-] failed to save attachment: {}".format(e))
         text += "\n"
 
     with open(os.path.join(ch_dir, ch.name + ".md"), "w") as f:
         f.write(text)
+    return errors
 
 
-async def backup_category(category, repository) -> List[str]:
+async def backup_category(category, repository, directory=None) -> List[str]:
     messages = []
 
     for ch in category.text_channels:
         try:
-            messages += await save_channel_messages(repository, category.name, ch)
+            prefix = directory or category.name
+            messages += await save_channel_messages(repository, prefix, ch)
             messages.append("[+] backup channel: {}".format(ch.name))
         except Exception as e:
             messages.append("[-] channel backup error: (channel: {}, error: {})".format(ch.name, e))
@@ -102,30 +105,6 @@ async def on_message(message):
         await message.channel.send("pong")
         return
 
-    if message.content.startswith("!backup "):
-        category = message.content[len("!backup "):].lower()
-        categories = {c.name.lower(): c for c in message.guild.categories}
-        if category not in categories:
-            await message.channel.send("no such category: {}".format(category))
-            return
-
-        category = categories[category]
-        messages = await backup_category(category, repository)
-        embed = discord.Embed(title=message.content, description="\n".join(messages))
-        await message.channel.send(embed=embed)
-
-    if message.content.startswith("!remove "):
-        category = message.content[len("!remove "):].lower()
-        categories = {c.name.lower(): c for c in message.guild.categories}
-        if category not in categories:
-            await message.channel.send("no such category: {}".format(category))
-            return
-
-        category = categories[category]
-        messages = await remove_category(category)
-        embed = discord.Embed(title=message.content, description="\n".join(messages))
-        await message.channel.send(embed=embed)
-
     if message.content.startswith("!archive "):
         category_prefix = message.content[len("!archive "):].lower()
         categories = {c.name.lower(): c for c in message.guild.categories}
@@ -139,7 +118,7 @@ async def on_message(message):
 
             category = categories[category_name]
 
-            messages = await backup_category(category, repository)
+            messages = await backup_category(category, repository, Path(category_name) / postfix.strip("-"))
             embed = discord.Embed(title="backup {}".format(category_name), description="\n".join(messages))
             await message.channel.send(embed=embed)
 
