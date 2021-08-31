@@ -109,6 +109,7 @@ async def on_message(message):
         category_prefix = message.content[len("!archive "):].lower()
         categories = {c.name.lower(): c for c in message.guild.categories}
 
+        await message.channel.send("[+] processing...")
         for postfix in ["", "-solved", "-unsolved"]:
             category_name = category_prefix + postfix
             if category_name not in categories:
@@ -118,13 +119,15 @@ async def on_message(message):
 
             category = categories[category_name]
 
-            messages = await backup_category(category, repository, Path(category_name) / postfix.strip("-"))
+            messages = await backup_category(category, repository, Path(category_prefix) / postfix.strip("-"))
             embed = discord.Embed(title="backup {}".format(category_name), description="\n".join(messages))
             await message.channel.send(embed=embed)
 
             messages = await remove_category(category)
             embed = discord.Embed(title="remove {}".format(category_name), description="\n".join(messages))
             await message.channel.send(embed=embed)
+
+        await message.channel.send("[+] done")
 
 
 client.run(token)
